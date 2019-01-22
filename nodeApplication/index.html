@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rock Paper Scissors</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.3.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<div>Username: <input id="inputName" onkeypress="validate()" placeholder="Username">
+    <button id="submitButton" type="submit">submit</button>
+</div>
+
+<div><p id="username"></p></div>
+<div><p>Rock Paper Scissors</p></div>
+<div><p>Make a choice</div>
+
+<div><p id="wait" style="display: none">WAIT</p></div>
+
+<div>
+    <button id="rock" disabled value="0">Rock</button>
+    <button id="paper" disabled value="1">Paper</button>
+    <button id="scissors" disabled value="2">Scissors</button>
+</div>
+<div>
+    <p id="result"></p>
+    <button id="reset" style="display: none" onclick="window.location.reload()">Reset</button>
+</div>
+
+<script>
+
+    const socket = io.connect();
+    USERNAME = "";
+    USERCHOICE = "";
+
+    $(document).ready(function () {
+        validate();
+        $('#inputName').change(validate);
+    });
+
+    function validate() {
+        document.getElementById("submitButton").disabled = $('#inputName').val().length <= 0;
+    }
+
+    $(document).ready(function () {
+
+        $("#submitButton").click(function () {
+
+            USERNAME = document.getElementById('inputName').value;
+            document.getElementById("username").innerHTML = "Welcome " + document.getElementById('inputName').value;
+            $("#rock,#paper, #scissors").prop('disabled', false);
+            $("#submitButton").prop('disabled', true);
+
+        });
+
+
+    });
+
+    //sending users choice
+    $(function () {
+
+
+        $("#rock, #paper, #scissors").click(function (e) {
+
+            e.preventDefault();
+            var $choice = "";
+
+            if (this.id === 'rock') {
+                console.log("Rock was clicked");
+                $choice = 0;
+
+            }
+            if (this.id === 'paper') {
+                console.log("Paper was clicked");
+                $choice = 1;
+            }
+            if (this.id === 'scissors') {
+                console.log("Scissors was clicked");
+                $choice = 2;
+            }
+
+            USERCHOICE = $choice;
+            document.getElementById('wait').style.display = 'inline-block';
+
+            $("#rock,#paper, #scissors").prop('disabled', true);
+            socket.emit('get choice', JSON.stringify({
+                "name": USERNAME,
+                "choice": $choice
+            }));
+        });
+    });
+
+    $(function () {
+
+        var $username = $('#inputName');
+        var $submitButton = $('#submitButton');
+        var $usernameField = $('#username');
+
+        //sending name to server
+        $submitButton.click(function (e) {
+            e.preventDefault();
+            socket.emit('send message', $username.val());
+            $username.val('');
+            console.log('Submitted');
+        });
+
+
+        // socket.on('new message', function (data) {
+        //     $usernameField.append("Welcome " + data.msg);
+        //
+        // });
+
+        socket.on('connections', function (data) {
+            console.log("YOU ARE ODD HERE");
+            console.log(data.msg);
+
+        })
+
+
+    });
+
+    socket.on('result', function (data) {
+        var $result = JSON.stringify(data);
+        document.getElementById('result').innerHTML = $result;
+        evaluate($result);
+
+    });
+
+    function evaluate(data) {
+
+        data = JSON.parse(data);
+
+        var enemyChoice = "";
+
+        for (let i = 0; i < data.length; i++) {
+
+            if (data[i]['name'] !== USERNAME) {
+                enemyChoice = data[i]['choice'];
+            }
+        }
+
+        console.log("I AM " + USERNAME);
+        console.log("MY CHOICE IS " + USERCHOICE);
+        console.log("===========");
+        console.log("MY ENEMY CHOICE IS " + enemyChoice);
+
+
+        var message = '';
+
+        if (USERCHOICE === enemyChoice) {
+            console.log("TIE");
+            message = "TIE";
+        }
+        else if ((USERCHOICE - enemyChoice + 3) % 3 === 1) {
+            console.log("YOU WON");
+            message = "YOU WON";
+        }
+
+        else {
+            console.log("YOU LOST");
+            message = "YOU LOST";
+        }
+
+        document.getElementById('wait').style.display = 'none';
+        document.getElementById('result').innerHTML = message;
+        document.getElementById('reset').style.display = 'inline-block';
+
+
+    }
+
+
+</script>
+
+
+</body>
+
+
+</html>
+
+
